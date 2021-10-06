@@ -86,7 +86,7 @@ var sketch = (p: P5) => {
     },
   };
 
-  p.keyPressed = () => keyPressActionMap[p.key]();
+  p.keyPressed = () => keyPressActionMap[p.key]?.();
 
   p.windowResized = () => {
     p.resizeCanvas(p.windowWidth, p.windowHeight);
