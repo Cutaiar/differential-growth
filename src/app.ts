@@ -21,6 +21,8 @@ class ClosedPath {
   public points: Point[] = [];
   private p: P5;
 
+  private edgeBreak = 50;
+
   constructor(primitive: Primitive, p: P5) {
     this.p = p;
 
@@ -50,14 +52,23 @@ class ClosedPath {
   }
 
   // Apply repulsion force to a, considering b.
-  private repulse(a: Point, b: Point, scale?: number) {
+  private repulse(a: Point, b: Point, scale: number, att: boolean) {
     const _scale = scale ?? 1;
-    const G = 1.5;
-    const dir = Vector.sub(b.pos, a.pos).mult(-1);
+    const G = 6;
+    const dir = Vector.sub(b.pos, a.pos).mult(att ? 1 : -1);
     const dsq = dir.magSq();
     const strength = (G * _scale) / dsq;
     dir.setMag(strength);
     a.acc.add(dir);
+  }
+
+  private attract(a: Point, b: Point) {
+    for (let i = 0; i < this.points.length - 1; i++) {
+      const j = i + 1;
+      const a = this.points[i];
+      const b = this.points[j];
+      this.repulse(a, b, 0.001, true);
+    }
   }
 
   // Subdivide the line between two points a and b. index should be the index of b
@@ -68,7 +79,7 @@ class ClosedPath {
 
   // Find the first case for subdivison and do it. This should be called in tick
   private subdivision() {
-    const distBreak = 100;
+    const distBreak = this.edgeBreak;
     for (let i = 0; i < this.points.length - 1; i++) {
       const j = i + 1;
       const a = this.points[i];
@@ -89,12 +100,36 @@ class ClosedPath {
     }
   }
 
+  // // calc rep for current node
+  // private kasparRepulse(node: Point) {
+  //   let seek = new Vector();
+  //   for (let other of this.points) {
+  //     if (node != other) {
+  //       let distance = Vector.dist(node.pos, other.pos);
+  //       let diff = Vector.sub(node.pos, other.pos);
+  //       diff.mult(Math.exp(this.edgeBreak - distance)); // invertly proportional
+  //       seek = Vector.sub(diff, node.vel); // seek = desired - velocity
+  //       seek.add(diff);
+  //     }
+  //   }
+  //   return seek;
+  // }
+
   public tick() {
+    this.subdivision();
+
     this.points.forEach((p) => {
       // apply repulsion to every point
       for (const q of this.points) {
         if (p !== q) {
-          this.repulse(p, q);
+          this.repulse(p, q, 0.001, false);
+        }
+      }
+
+      // attraction should work on
+      for (const q of this.points) {
+        if (p !== q) {
+          this.attract(p, q);
         }
       }
 
@@ -102,8 +137,6 @@ class ClosedPath {
       p.pos.add(p.vel);
       p.vel.add(p.acc);
     });
-
-    this.subdivision();
   }
 
   public draw() {
